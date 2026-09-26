@@ -33,7 +33,7 @@ const AspectRatioSelector = ({
             onClick={() => onChange(ratio)}
             className={`flex items-center gap-2 rounded-lg border px-3 py-2 text-sm transition ${
               value === ratio
-                ? 'border-purple-500 bg-purple-500/10 text-purple-400'
+                ? 'border-pink-500 bg-purple-500/10 text-pink-400'
                 : 'border-zinc-700 bg-zinc-800 text-zinc-400 hover:border-zinc-600'
             }`}
           >

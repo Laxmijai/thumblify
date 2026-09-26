@@ -10,6 +10,8 @@ import {
 import SoftBackDrop from "../components/SoftBackDrop";
 import AspectRationSelector from "../components/AspectRationSelector";
 import StyleSelector from "../components/StyleSelector";
+import ColourSchemeSelector from "../components/ColourSchemeSelector";
+import PreviewPanel from "../components/PreviewPanel";
 
 const Generate = () => {
   const { id } = useParams();
@@ -32,12 +34,35 @@ const Generate = () => {
   const [styleDropdownOpen, setStyleDropdownOpen] =
     useState(false);
 
+  // GENERATE THUMBNAIL
+  const generateThumbnail = async () => {
+    setLoading(true);
+
+    try {
+      console.log({
+        title,
+        additionalDetails,
+        aspectRatio,
+        ColorSchemeId,
+        style,
+      });
+
+      // API call will come here later
+
+    } catch (error) {
+      console.log(error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <>
       <SoftBackDrop />
 
       <div className="pt-24 min-h-screen">
         <main className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8 pb-28 lg:pb-8">
+
           <div className="grid lg:grid-cols-[400px_1fr] gap-8">
 
             {/* LEFT PANEL */}
@@ -46,6 +71,7 @@ const Generate = () => {
                 id && "pointer-events-none"
               }`}
             >
+
               <div className="p-6 rounded-2xl bg-white/8 border border-white/12 shadow-xl space-y-6">
 
                 <div>
@@ -62,6 +88,7 @@ const Generate = () => {
 
                   {/* TITLE INPUT */}
                   <div className="space-y-2">
+
                     <label className="block text-sm font-medium text-zinc-200">
                       Title or Topic
                     </label>
@@ -82,6 +109,7 @@ const Generate = () => {
                         {title.length}/100
                       </span>
                     </div>
+
                   </div>
 
                   {/* ASPECT RATIO */}
@@ -98,11 +126,15 @@ const Generate = () => {
                     setIsOpen={setStyleDropdownOpen}
                   />
 
-                  {/* COLOR SCHEME SELECTOR */}
-                  {/* <ColorSchemeSelector /> */}
+                  {/* COLOR SCHEME */}
+                  <ColourSchemeSelector
+                    value={ColorSchemeId}
+                    onChange={setColorSchemeId}
+                  />
 
                   {/* DETAILS */}
                   <div className="space-y-2">
+
                     <label className="block text-sm font-medium">
                       Additional Prompts{" "}
                       <span className="text-zinc-400 text-xs">
@@ -119,15 +151,34 @@ const Generate = () => {
                       placeholder="Add any specific elements, mood, or style preferences..."
                       className="w-full px-4 py-3 rounded-lg border border-white/10 bg-white/6 text-zinc-100 placeholder:text-zinc-400 focus:outline-none focus:ring-2 focus:ring-pink-500 resize-none"
                     />
+
                   </div>
 
                 </div>
               </div>
+
+              {/* BUTTON */}
+              <button
+                onClick={generateThumbnail}
+                disabled={loading}
+                className="text-[15px] w-full py-3 rounded-xl font-medium bg-linear-to-b from-pink-600 to-pink-600 hover:from-pink-700 disabled:cursor-not-allowed transition-colors"
+              >
+                {loading
+                  ? "Generating..."
+                  : "Generate Thumbnail"}
+              </button>
+
             </div>
 
             {/* RIGHT PANEL */}
             <div>
-              {/* Thumbnail preview will go here */}
+
+              <PreviewPanel
+                thumbnail={thumbnail}
+                isLoading={loading}
+                aspectRatio={aspectRatio}
+              />
+
             </div>
 
           </div>
