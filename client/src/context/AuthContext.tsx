@@ -17,6 +17,10 @@ interface AuthContextProps {
     user: IUser | null;
     setUser: (user: IUser | null) => void;
 
+    isLoggingIn: boolean;
+    isSigningUp: boolean;
+    isLoggingOut: boolean;
+
     login: (user: {
         email: string;
         password: string;
@@ -47,6 +51,15 @@ export const AuthProvider = ({
     const [isLoggedIn, setIsLoggedIn] =
         useState<boolean>(false);
 
+    const [isLoggingIn, setIsLoggingIn] =
+        useState(false);
+
+    const [isSigningUp, setIsSigningUp] =
+        useState(false);
+
+    const [isLoggingOut, setIsLoggingOut] =
+        useState(false);
+
     const signUp = async ({
         name,
         email,
@@ -56,6 +69,10 @@ export const AuthProvider = ({
         email: string;
         password: string;
     }) => {
+        if (isSigningUp) return;
+
+        setIsSigningUp(true);
+
         try {
             const { data } =
                 await api.post(
@@ -85,7 +102,15 @@ export const AuthProvider = ({
                 error
             );
 
+            toast.error(
+                error?.response?.data?.message ||
+                "Unable to create account. Please try again."
+            );
+
             throw error;
+
+        } finally {
+            setIsSigningUp(false);
         }
     };
 
@@ -96,6 +121,10 @@ export const AuthProvider = ({
         email: string;
         password: string;
     }) => {
+        if (isLoggingIn) return;
+
+        setIsLoggingIn(true);
+
         try {
             const { data } =
                 await api.post(
@@ -124,11 +153,23 @@ export const AuthProvider = ({
                 error
             );
 
+            toast.error(
+                error?.response?.data?.message ||
+                "Unable to login. Please try again."
+            );
+
             throw error;
+
+        } finally {
+            setIsLoggingIn(false);
         }
     };
 
     const logout = async () => {
+        if (isLoggingOut) return;
+
+        setIsLoggingOut(true);
+
         try {
             const { data } =
                 await api.post(
@@ -151,8 +192,11 @@ export const AuthProvider = ({
 
             toast.error(
                 error?.response?.data?.message ||
-                "Failed to logout"
+                "Unable to logout. Please try again."
             );
+
+        } finally {
+            setIsLoggingOut(false);
         }
     };
 
@@ -188,6 +232,11 @@ export const AuthProvider = ({
         setUser,
         isLoggedIn,
         setIsLoggedIn,
+
+        isLoggingIn,
+        isSigningUp,
+        isLoggingOut,
+
         signUp,
         login,
         logout
