@@ -1,22 +1,27 @@
-import { Request, Response } from 'express';
-import User from '../models/Users.js';
-import bcrypt from 'bcrypt';
+import { Request, Response } from "express";
+import User from "../models/Users.js";
+import bcrypt from "bcrypt";
 
-// Controllers For User Registration
-export const registerUser = async (req: Request, res: Response) => {
+export const registerUser = async (
+    req: Request,
+    res: Response
+) => {
     try {
         const { name, email, password } = req.body;
 
-        // find user by email
         const user = await User.findOne({ email });
 
         if (user) {
-            return res.status(400).json({ message: 'User already exists' });
+            return res.status(400).json({
+                message: "User already exists"
+            });
         }
 
-        // Encrypt the password
         const salt = await bcrypt.genSalt(10);
-        const hashedPassword = await bcrypt.hash(password, salt);
+        const hashedPassword = await bcrypt.hash(
+            password,
+            salt
+        );
 
         const newUser = new User({
             name,
@@ -26,98 +31,224 @@ export const registerUser = async (req: Request, res: Response) => {
 
         await newUser.save();
 
-        // setting user data in session
         req.session.isLoggedIn = true;
         req.session.userId = newUser._id;
 
-        return res.json({
-            message: 'Account created successfully',
-            user: {
-                _id: newUser._id,
-                name: newUser.name,
-                email: newUser.email
+        console.log("REGISTER SESSION");
+        console.log("Session ID:", req.sessionID);
+        console.log("User ID:", req.session.userId);
+
+        req.session.save((error) => {
+            if (error) {
+                console.error(
+                    "SESSION SAVE ERROR:",
+                    error
+                );
+
+                return res.status(500).json({
+                    message:
+                        "Failed to create login session"
+                });
             }
+
+            console.log(
+                "REGISTER SESSION SAVED SUCCESSFULLY"
+            );
+
+            return res.json({
+                message:
+                    "Account created successfully",
+                user: {
+                    _id: newUser._id,
+                    name: newUser.name,
+                    email: newUser.email
+                }
+            });
         });
+
     } catch (error: any) {
-        console.log(error);
-        res.status(500).json({ message: error.message });
+        console.error("REGISTER ERROR:", error);
+
+        return res.status(500).json({
+            message: error.message
+        });
     }
 };
 
-
-// Controllers For User Login
-export const loginUser = async (req: Request, res: Response) => {
+export const loginUser = async (
+    req: Request,
+    res: Response
+) => {
     try {
         const { email, password } = req.body;
 
-        // find user by email
         const user = await User.findOne({ email });
 
         if (!user) {
             return res.status(400).json({
-                message: 'Invalid email or password'
+                message: "Invalid email or password"
             });
         }
 
-        const isPasswordCorrect = await bcrypt.compare(
-            password,
-            user.password
-        );
+        const isPasswordCorrect =
+            await bcrypt.compare(
+                password,
+                user.password
+            );
 
         if (!isPasswordCorrect) {
             return res.status(400).json({
-                message: 'Invalid email or password'
+                message: "Invalid email or password"
             });
         }
 
-        // setting user data in session
         req.session.isLoggedIn = true;
         req.session.userId = user._id;
 
-        return res.json({
-            message: 'Login successful',
-            user: {
-                _id: user._id,
-                name: user.name,
-                email: user.email
+        console.log("LOGIN SESSION");
+        console.log("Session ID:", req.sessionID);
+        console.log("User ID:", req.session.userId);
+        console.log(
+            "Is Logged In:",
+            req.session.isLoggedIn
+        );
+
+        req.session.save((error) => {
+            if (error) {
+                console.error(
+                    "SESSION SAVE ERROR:",
+                    error
+                );
+
+                return res.status(500).json({
+                    message:
+                        "Failed to create login session"
+                });
             }
+
+            console.log(
+                "LOGIN SESSION SAVED SUCCESSFULLY"
+            );
+
+            console.log(
+                "Session ID:",
+                req.sessionID
+            );
+
+            console.log(
+                "User ID:",
+                req.session.userId
+            );
+
+            return res.json({
+                message: "Login successful",
+                user: {
+                    _id: user._id,
+                    name: user.name,
+                    email: user.email
+                }
+            });
         });
+
     } catch (error: any) {
-        console.log(error);
-        res.status(500).json({ message: error.message });
+        console.error("LOGIN ERROR:", error);
+
+        return res.status(500).json({
+            message: error.message
+        });
     }
 };
 
+export const logoutUser = async (
+    req: Request,
+    res: Response
+) => {
+    try {
+        console.log(
+            "LOGOUT SESSION ID:",
+            req.sessionID
+        );
 
-// Controllers For User Logout
-export const logoutUser = async (req: Request, res: Response) => {
-    req.session.destroy((error: any) => {
-        if (error) {
-            console.log(error);
-            return res.status(500).json({ message: error.message });
-        }
-    });
+        req.session.destroy((error) => {
+            if (error) {
+                console.error(
+                    "LOGOUT SESSION ERROR:",
+                    error
+                );
 
-    return res.json({ message: 'Logout successful' });
+                return res.status(500).json({
+                    message: error.message
+                });
+            }
+
+            console.log(
+                "SESSION DESTROYED SUCCESSFULLY"
+            );
+
+            return res.json({
+                message: "Logout successful"
+            });
+        });
+
+    } catch (error: any) {
+        console.error("LOGOUT ERROR:", error);
+
+        return res.status(500).json({
+            message: error.message
+        });
+    }
 };
 
-
-// Controllers For User Verify
-export const verifyUser = async (req: Request, res: Response) => {
+export const verifyUser = async (
+    req: Request,
+    res: Response
+) => {
     try {
+        console.log("VERIFY REQUEST");
+        console.log(
+            "Session ID:",
+            req.sessionID
+        );
+        console.log(
+            "Session:",
+            req.session
+        );
+        console.log(
+            "User ID:",
+            req.session.userId
+        );
+
         const { userId } = req.session;
 
-        const user = await User.findById(userId).select('-password');
-
-        if (!user) {
-            return res.status(400).json({
-                message: 'Invalid user'
+        if (!userId) {
+            return res.status(401).json({
+                message: "Not authenticated"
             });
         }
 
-        return res.json({ user });
+        const user =
+            await User
+                .findById(userId)
+                .select("-password");
+
+        if (!user) {
+            return res.status(401).json({
+                message: "Invalid user"
+            });
+        }
+
+        return res.json({
+            user
+        });
+
     } catch (error: any) {
-        console.log(error);
-        res.status(500).json({ message: error.message });
+        console.error(
+            "VERIFY ERROR:",
+            error
+        );
+
+        return res.status(500).json({
+            message: error.message
+        });
     }
 };
