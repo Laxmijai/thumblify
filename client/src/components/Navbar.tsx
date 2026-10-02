@@ -58,12 +58,12 @@ export default function Navbar() {
                             My Generations
                         </Link>
                     ) : (
-                        <a
-                            href="/#features"
+                        <Link
+                            to="/#features"
                             className="hover:text-pink-300 transition"
                         >
                             About
-                        </a>
+                        </Link>
                     )}
 
                     <a
