@@ -74,7 +74,6 @@ export const registerUser = async (
         });
     }
 };
-
 export const loginUser = async (
     req: Request,
     res: Response
@@ -82,11 +81,19 @@ export const loginUser = async (
     try {
         const { email, password } = req.body;
 
+        console.log("========== LOGIN ==========");
+        console.log("Email received:", email);
+        console.log("Password received:", !!password);
+
         const user = await User.findOne({ email });
 
+        console.log("User found:", !!user);
+
         if (!user) {
+            console.log("LOGIN FAILED: USER NOT FOUND");
+
             return res.status(400).json({
-                message: "Invalid email or password"
+                message: "User not found"
             });
         }
 
@@ -96,22 +103,24 @@ export const loginUser = async (
                 user.password
             );
 
+        console.log(
+            "Password correct:",
+            isPasswordCorrect
+        );
+
         if (!isPasswordCorrect) {
+            console.log("LOGIN FAILED: INVALID PASSWORD");
+
             return res.status(400).json({
-                message: "Invalid email or password"
+                message: "Invalid password"
             });
         }
 
         req.session.isLoggedIn = true;
         req.session.userId = user._id;
 
-        console.log("LOGIN SESSION");
         console.log("Session ID:", req.sessionID);
         console.log("User ID:", req.session.userId);
-        console.log(
-            "Is Logged In:",
-            req.session.isLoggedIn
-        );
 
         req.session.save((error) => {
             if (error) {
@@ -128,16 +137,6 @@ export const loginUser = async (
 
             console.log(
                 "LOGIN SESSION SAVED SUCCESSFULLY"
-            );
-
-            console.log(
-                "Session ID:",
-                req.sessionID
-            );
-
-            console.log(
-                "User ID:",
-                req.session.userId
             );
 
             return res.json({
@@ -158,7 +157,6 @@ export const loginUser = async (
         });
     }
 };
-
 export const logoutUser = async (
     req: Request,
     res: Response
