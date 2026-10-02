@@ -1,6 +1,7 @@
 import { Request, Response } from "express";
 import User from "../models/Users.js";
 import bcrypt from "bcrypt";
+import mongoose from "mongoose";
 
 export const registerUser = async (
     req: Request,
@@ -79,7 +80,19 @@ export const loginUser = async (
     res: Response
 ) => {
     try {
+
+        
         const { email, password } = req.body;
+
+        console.log("LOGIN EMAIL:", JSON.stringify(email));
+console.log("DATABASE:", mongoose.connection.name);
+
+const users = await User.find({}).select("email");
+
+console.log(
+    "USERS IN DATABASE:",
+    users.map(user => user.email)
+);
 
         console.log("========== LOGIN ==========");
         console.log("Email received:", email);
