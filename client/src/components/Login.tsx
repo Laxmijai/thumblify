@@ -1,10 +1,15 @@
-import React, { useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import SoftBackDrop from './SoftBackDrop'
+import { useAuth } from '../context/AuthContext';
+import { useNavigate } from 'react-router-dom';
 
 function Login() {
 
 
     const [state, setState] = useState("login")
+   const { login, signUp, user } = useAuth();
+   
+    const navigate = useNavigate();
 
     const [formData, setFormData] = React.useState({
         name: '',
@@ -17,11 +22,21 @@ function Login() {
         setFormData(prev => ({ ...prev, [name]: value }))
     }
 
-    const handleSubmit = (e : React.FormEvent<HTMLFormElement>) => {
-        e.preventDefault()
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
 
+    if (state === "login") {
+        await login(formData);
+    } else {
+        await signUp(formData);
     }
+};
 
+useEffect(() => {
+    if (user) {
+        navigate("/");
+    }
+}, [user, navigate]);
   return (
      <>
      <SoftBackDrop/>

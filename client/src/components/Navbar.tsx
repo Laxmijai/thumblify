@@ -1,60 +1,191 @@
 import { MenuIcon, XIcon } from "lucide-react";
 import { useState } from "react";
 import { motion } from "motion/react";
-import { navlinks } from "../data/navlinks";
-import type { INavLink } from "../types";
-import { Link, NavLink, useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
+import { useAuth } from "../context/AuthContext";
 
 export default function Navbar() {
+    const { isLoggedIn, user, logout } = useAuth();
     const [isOpen, setIsOpen] = useState(false);
-    // use this
     const navigate = useNavigate();
 
     return (
         <>
-            <motion.nav className="fixed top-0 z-50 flex items-center justify-between w-full py-4 px-6 md:px-16 lg:px-24 xl:px-32 backdrop-blur"
+            {/* Navbar */}
+            <motion.nav
+                className="fixed top-0 z-50 flex items-center justify-between w-full py-4 px-6 md:px-16 lg:px-24 xl:px-32 backdrop-blur"
                 initial={{ y: -100, opacity: 0 }}
                 animate={{ y: 0, opacity: 1 }}
                 viewport={{ once: true }}
-                transition={{ type: "spring", stiffness: 250, damping: 70, mass: 1 }}
+                transition={{
+                    type: "spring",
+                    stiffness: 250,
+                    damping: 70,
+                    mass: 1,
+                }}
             >
-                {/* // added this link tag */}
-               <Link to ='/'>
-                   <img src="/logo.svg" alt="logo" className="h-8.5 w-auto"/>
-               </Link>
+                {/* Logo */}
+                <Link to="/">
+                    <img
+                        src="/logo.svg"
+                        alt="logo"
+                        className="h-8.5 w-auto"
+                    />
+                </Link>
 
+                {/* Desktop Navigation */}
                 <div className="hidden md:flex items-center gap-8 transition duration-500">
-                    <Link to='/' className="hover:text-pink-300 transition"> 
-                    Home
+                    <Link
+                        to="/"
+                        className="hover:text-pink-300 transition"
+                    >
+                        Home
                     </Link>
-                     <Link to='/generate' className="hover:text-pink-300 transition"> 
-                    Generate
+
+                    <Link
+                        to="/generate"
+                        className="hover:text-pink-300 transition"
+                    >
+                        Generate
                     </Link>
-                     <Link to='/my-generation' className="hover:text-pink-300 transition"> 
-                     My Generations
-                    </Link>
-                     <Link to='#' className="hover:text-pink-300 transition"> 
-                    Contact
-                    </Link>
-                  
+
+                    {isLoggedIn ? (
+                        <Link
+                            to="/my-generation"
+                            className="hover:text-pink-300 transition"
+                        >
+                            My Generations
+                        </Link>
+                    ) : (
+                        <a
+                            href="/#features"
+                            className="hover:text-pink-300 transition"
+                        >
+                            About
+                        </a>
+                    )}
+
+                    <a
+                        href="/#contact"
+                        className="hover:text-pink-300 transition"
+                    >
+                        Contact us
+                    </a>
                 </div>
-                {/* use a navigate url when click on get started */}
-                <button onClick={()=>navigate('/login')} className="hidden md:block px-6 py-2.5 bg-pink-600 hover:bg-pink-700 active:scale-95 transition-all rounded-full">
-                   Get Started
-                </button>
-                {/* when the page is smaller then menu items  */}
-                <button onClick={() => setIsOpen(true)} className="md:hidden">
-                    <MenuIcon size={26} className="active:scale-90 transition" />
-                </button>
+
+                {/* Right Side */}
+                <div className="flex items-center gap-2">
+                    {isLoggedIn ? (
+                        <div className="relative group">
+                            {/* User Avatar */}
+                            <button
+                                type="button"
+                                className="rounded-full size-8 bg-white/20 border-2 border-white/10"
+                            >
+                                {user?.name?.charAt(0).toUpperCase()}
+                            </button>
+
+                            {/* Logout */}
+                            <div className="absolute hidden group-hover:block top-full right-0 pt-2">
+                                <button
+                                    type="button"
+                                    onClick={() => logout()}
+                                    className="bg-white/20 border-2 border-white/10 px-5 py-1.5 rounded"
+                                >
+                                    Logout
+                                </button>
+                            </div>
+                        </div>
+                    ) : (
+                        <button
+                            type="button"
+                            onClick={() => navigate("/login")}
+                            className="hidden md:block px-6 py-2.5 bg-pink-600 hover:bg-pink-700 active:scale-95 transition-all rounded-full"
+                        >
+                            Get Started
+                        </button>
+                    )}
+
+                    {/* Mobile Menu Button */}
+                    <button
+                        type="button"
+                        onClick={() => setIsOpen(true)}
+                        className="md:hidden"
+                    >
+                        <MenuIcon
+                            size={26}
+                            className="active:scale-90 transition"
+                        />
+                    </button>
+                </div>
             </motion.nav>
 
-            <div className={`fixed inset-0 z-100 bg-black/40 backdrop-blur flex flex-col items-center justify-center text-lg gap-8 md:hidden transition-transform duration-400 ${isOpen ? "translate-x-0" : "-translate-x-full"}`}>
-               <Link onClick={() => setIsOpen(false)}  to='/'> Home </Link>
-               <Link onClick={() => setIsOpen(false)}  to='/generate' > Generate </Link>
-               <Link onClick={() => setIsOpen(false)}  to='/my-generation'>Generations</Link>
-               <Link onClick={() => setIsOpen(false)}  to='/login' > Login </Link>
-                  
-                <button onClick={() => setIsOpen(false)} className="active:ring-3 active:ring-white aspect-square size-10 p-1 items-center justify-center bg-pink-600 hover:bg-pink-700 transition text-white rounded-md flex">
+            {/* Mobile Navigation */}
+            <div
+                className={`fixed inset-0 z-[100] bg-black/40 backdrop-blur flex flex-col items-center justify-center text-lg gap-8 md:hidden transition-transform duration-400 ${
+                    isOpen
+                        ? "translate-x-0"
+                        : "-translate-x-full"
+                }`}
+            >
+                {/* Home */}
+                <Link
+                    onClick={() => setIsOpen(false)}
+                    to="/"
+                >
+                    Home
+                </Link>
+
+                {/* Generate */}
+                <Link
+                    onClick={() => setIsOpen(false)}
+                    to="/generate"
+                >
+                    Generate
+                </Link>
+
+                {/* About */}
+                <Link
+                    onClick={() => setIsOpen(false)}
+                    to="/#features"
+                >
+                    About
+                </Link>
+
+                {/* Contact */}
+                <Link
+                    onClick={() => setIsOpen(false)}
+                    to="/#contact"
+                >
+                    Contact us
+                </Link>
+
+                {/* Login / Logout */}
+                {isLoggedIn ? (
+                    <button
+                        type="button"
+                        onClick={() => {
+                            setIsOpen(false);
+                            logout();
+                        }}
+                    >
+                        Logout
+                    </button>
+                ) : (
+                    <Link
+                        onClick={() => setIsOpen(false)}
+                        to="/login"
+                    >
+                        Login
+                    </Link>
+                )}
+
+                {/* Close Button */}
+                <button
+                    type="button"
+                    onClick={() => setIsOpen(false)}
+                    className="active:ring-3 active:ring-white aspect-square size-10 p-1 items-center justify-center bg-pink-600 hover:bg-pink-700 transition text-white rounded-md flex"
+                >
                     <XIcon />
                 </button>
             </div>

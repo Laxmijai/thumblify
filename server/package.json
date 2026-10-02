@@ -24,12 +24,16 @@
     "typescript": "^7.0.2"
   },
   "dependencies": {
+    "@google/genai": "^2.25.0",
+    "axios": "^1.20.0",
     "bcrypt": "^6.0.0",
+    "cloudinary": "^2.11.0",
     "connect-mongo": "^6.0.0",
     "cors": "^2.8.6",
     "dotenv": "^17.4.2",
     "express": "^5.2.1",
     "express-session": "^1.19.0",
+    "form-data": "^4.0.6",
     "mongoose": "^9.10.1"
   }
 }

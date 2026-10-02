@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { useParams } from "react-router-dom";
+import { useEffect, useState } from "react";
+import { useLocation, useNavigate, useParams } from "react-router-dom";
 import {
   colorSchemes,
   type AspectRatio,
@@ -12,9 +12,15 @@ import AspectRationSelector from "../components/AspectRationSelector";
 import StyleSelector from "../components/StyleSelector";
 import ColourSchemeSelector from "../components/ColourSchemeSelector";
 import PreviewPanel from "../components/PreviewPanel";
+import { useAuth } from "../context/AuthContext";
+import { toast } from "react-toastify";
+import api from "../configs/api";
 
 const Generate = () => {
   const { id } = useParams();
+  const {pathname} = useLocation();
+  const navigate = useNavigate();
+  const {isLoggedIn} = useAuth();
 
   const [title, setTitle] = useState("");
   const [additionalDetails, setAdditionalDetails] = useState("");
@@ -35,26 +41,88 @@ const Generate = () => {
     useState(false);
 
   // GENERATE THUMBNAIL
-  const generateThumbnail = async () => {
+     const handleGenerate = async () => {
+    if (!isLoggedIn) {
+        return toast.error("Please login to generate thumbnails");
+    }
+
+    if (!title.trim()) {
+        return toast.error("Title is required");
+    }
+
     setLoading(true);
 
-    try {
-      console.log({
+    const api_payload = {
         title,
-        additionalDetails,
-        aspectRatio,
-        ColorSchemeId,
+        prompt: additionalDetails,
         style,
-      });
+        aspect_ratio: aspectRatio,
+        color_scheme: ColorSchemeId,
+        text_overlay: true,
+        context_overlay: true
+    };
 
-      // API call will come here later
+    try {
+        const { data } = await api.post(
+            "/api/thumbnail/generate",
+            api_payload
+        );
 
-    } catch (error) {
-      console.log(error);
+        if (data.thumbnail) {
+            toast.success(data.message);
+            navigate(`/generate/${data.thumbnail._id}`);
+        }
+    } catch (error: any) {
+        console.log(error);
+        toast.error(
+            error?.response?.data?.message || error.message
+        );
     } finally {
-      setLoading(false);
+        setLoading(false);
     }
-  };
+};
+  const fetchThumbnail = async () => {
+    try {
+        const { data } = await api.get(
+            `/api/user/thumbnail/${id}`
+        );
+
+        setThumbnail(data?.thumbnail as IThumbnail);
+        setAdditionalDetails(data?.thumbnail?.user_prompt);
+        setTitle(data?.thumbnail?.title);
+        setColorSchemeId(data?.thumbnail?.color_scheme);
+        setAspectRatio(data?.thumbnail?.aspect_ratio);
+        setStyle(data?.thumbnail?.style);
+
+    } catch (error: any) {
+        console.log(error);
+
+        toast.error(
+            error?.response?.data?.message || error.message
+        );
+    }
+};
+
+useEffect(() => {
+    if (isLoggedIn && id) {
+        fetchThumbnail();
+    }
+
+    if (id && loading && isLoggedIn) {
+        const interval = setInterval(() => {
+            fetchThumbnail();
+        }, 5000);
+
+        return () => clearInterval(interval);
+    }
+}, [id, loading, isLoggedIn]);
+
+ useEffect(()=>{
+  if(!id && thumbnail){
+    setThumbnail(null)
+  }
+ },[pathname]);
+     
 
   return (
     <>
@@ -159,7 +227,7 @@ const Generate = () => {
 
               {/* BUTTON */}
               <button
-                onClick={generateThumbnail}
+                onClick={handleGenerate}
                 disabled={loading}
                 className="text-[15px] w-full py-3 rounded-xl font-medium bg-linear-to-b from-pink-600 to-pink-600 hover:from-pink-700 disabled:cursor-not-allowed transition-colors"
               >

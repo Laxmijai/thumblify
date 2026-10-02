@@ -8,6 +8,7 @@ export interface IThumbnail extends Document {
     aspect_ratio?: "16:9" | "1:1" | "9:16";
     color_scheme?: "vibrant" | "sunset" | "forest" | "neon" | "purple" | "monochrome" | "ocean" | "pastel";
     text_overlay?: boolean;
+    text_overlay_text?: string;
     image_url?: string;
     prompt_used?: string;
     user_prompt?: string;
@@ -67,10 +68,16 @@ const ThumbnailSchema = new mongoose.Schema<IThumbnail>(
             ]
         },
 
-        text_overlay: {
-            type: Boolean,
-            default: false
-        },
+       text_overlay: {
+    type: Boolean,
+    default: false
+},
+
+text_overlay_text: {
+    type: String,
+    trim: true,
+    default: ""
+},
 
         image_url: {
             type: String,

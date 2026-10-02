@@ -1,4 +1,4 @@
-
+import 'dotenv/config';
 import express, { Request, Response } from 'express';
 import cors from "cors";
 import dotenv from "dotenv";
@@ -6,7 +6,13 @@ import connectDB from "./config/db.js";
 import MongoStore from 'connect-mongo';
 import session from 'express-session';
 import AuthRouter from './routes/AuthRoutes.js';
-
+import ThumbnailRouter from './routes/ThumbnailRouter.js'
+import UserRouter from './routes/UserRoutes.js';
+console.log("API KEY EXISTS:", !!process.env.STABILITY_API_KEY);
+console.log(
+    "API KEY PREFIX:",
+    process.env.STABILITY_API_KEY?.substring(0, 3)
+);
 
 dotenv.config();
 
@@ -40,7 +46,10 @@ app.use(session({
 
 app.use(express.json());
 
+
 app.use("/api/auth",AuthRouter);
+app.use("/api/thumbnail",ThumbnailRouter);
+app.use("/api/user",UserRouter);
 
 const port = Number(process.env.PORT) || 3000;
 
