@@ -72,12 +72,15 @@ export const AuthProvider = ({
                 setIsLoggedIn(true);
             }
 
-            toast.success(data.message);
+            toast.success(
+                data.message ||
+                "Account created successfully"
+            );
 
             return data;
 
         } catch (error: any) {
-            console.log(
+            console.error(
                 "SIGNUP ERROR:",
                 error
             );
@@ -108,12 +111,15 @@ export const AuthProvider = ({
                 setIsLoggedIn(true);
             }
 
-            toast.success(data.message);
+            toast.success(
+                data.message ||
+                "Login successful"
+            );
 
             return data;
 
         } catch (error: any) {
-            console.log(
+            console.error(
                 "LOGIN ERROR:",
                 error
             );
@@ -132,10 +138,13 @@ export const AuthProvider = ({
             setUser(null);
             setIsLoggedIn(false);
 
-            toast.success(data.message);
+            toast.success(
+                data.message ||
+                "Logout successful"
+            );
 
         } catch (error: any) {
-            console.log(
+            console.error(
                 "LOGOUT ERROR:",
                 error
             );

@@ -96,6 +96,10 @@ text_overlay_text: {
             type: Boolean,
             default: true
         }
+        
+    },
+    {
+        timestamps: true
     }
 );
 
