@@ -36,11 +36,12 @@ export default function Navbar() {
                 {/* Desktop Navigation */}
                 <div className="hidden md:flex items-center gap-8 transition duration-500">
                     <Link
-                        to="/"
-                        className="hover:text-pink-300 transition"
-                    >
-                        Home
-                    </Link>
+    to="/"
+    onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
+    className="hover:text-pink-300 transition"
+>
+    Home
+</Link>
 
                     <Link
                         to="/generate"
@@ -129,12 +130,15 @@ export default function Navbar() {
                 }`}
             >
                 {/* Home */}
-                <Link
-                    onClick={() => setIsOpen(false)}
-                    to="/"
-                >
-                    Home
-                </Link>
+               <Link
+    to="/"
+    onClick={() => {
+        setIsOpen(false);
+        window.scrollTo({ top: 0, behavior: "smooth" });
+    }}
+>
+    Home
+</Link>
 
                 {/* Generate */}
                 <Link
