@@ -1,214 +1,128 @@
-
 import "dotenv/config";
 
 import { Request, Response } from "express";
 import Thumbnail from "../models/Thumbnail.js";
-
-import fs from "fs";
 import axios from "axios";
 
 import { v2 as cloudinary } from "cloudinary";
 
-
-// ============================================
-// CLOUDINARY CONFIG
-// ============================================
-
 cloudinary.config({
-  secure: true,
+    secure: true,
 });
 
 console.log("Cloudinary config:", {
-  cloud_name: cloudinary.config().cloud_name,
-  api_key: cloudinary.config().api_key
-    ? "SET"
-    : "MISSING",
-  api_secret: cloudinary.config().api_secret
-    ? "SET"
-    : "MISSING",
+    cloud_name: cloudinary.config().cloud_name,
+    api_key: cloudinary.config().api_key
+        ? "SET"
+        : "MISSING",
+    api_secret: cloudinary.config().api_secret
+        ? "SET"
+        : "MISSING",
 });
 
-
-// ============================================
-// POLLINATIONS API KEY
-// ============================================
-
-// Your .env:
-//
-// STABILITY_API_KEY=sk_xxxxxxxxx
-
 const pollinationsApiKey =
-  process.env.STABILITY_API_KEY;
+    process.env.STABILITY_API_KEY;
 
 if (!pollinationsApiKey) {
-  throw new Error(
-    "STABILITY_API_KEY is missing from .env"
-  );
+    throw new Error(
+        "STABILITY_API_KEY is missing from .env"
+    );
 }
 
-console.log(
-  "Pollinations API Key: LOADED"
-);
-
-console.log(
-  "Pollinations API Key Prefix:",
-  pollinationsApiKey.substring(0, 3)
-);
-
-
-// ============================================
-// STYLE PROMPTS
-// ============================================
-
 const stylePrompts = {
-  "Bold & Graphic":
-    "eye-catching YouTube thumbnail, vibrant colors, expressive facial reaction, dramatic lighting, high contrast, click-worthy composition, professional YouTube thumbnail style",
+    "Bold & Graphic":
+        "eye-catching YouTube thumbnail, vibrant colors, expressive facial reaction, dramatic lighting, high contrast, click-worthy composition, professional YouTube thumbnail style",
 
-  "Tech/Futuristic":
-    "futuristic YouTube thumbnail, sleek modern design, digital UI elements, glowing accents, holographic effects, cyber-tech aesthetic, sharp lighting, high-tech atmosphere",
+    "Tech/Futuristic":
+        "futuristic YouTube thumbnail, sleek modern design, digital UI elements, glowing accents, holographic effects, cyber-tech aesthetic, sharp lighting, high-tech atmosphere",
 
-  Minimalist:
-    "minimalist YouTube thumbnail, clean layout, simple shapes, limited color palette, plenty of negative space, modern flat design, clear focal point",
+    Minimalist:
+        "minimalist YouTube thumbnail, clean layout, simple shapes, limited color palette, plenty of negative space, modern flat design, clear focal point",
 
-  Photorealistic:
-    "photorealistic YouTube thumbnail, ultra-realistic lighting, natural skin tones, candid moment, DSLR-style photography, lifestyle realism, shallow depth of field",
+    Photorealistic:
+        "photorealistic YouTube thumbnail, ultra-realistic lighting, natural skin tones, candid moment, DSLR-style photography, lifestyle realism, shallow depth of field",
 
-  Illustrated:
-    "illustrated YouTube thumbnail, custom digital illustration, stylized characters, bold outlines, vibrant colors, creative cartoon or vector art style",
+    Illustrated:
+        "illustrated YouTube thumbnail, custom digital illustration, stylized characters, bold outlines, vibrant colors, creative cartoon or vector art style",
 };
-
-
-// ============================================
-// COLOR SCHEME DESCRIPTIONS
-// ============================================
 
 const colorSchemeDescriptions = {
-  vibrant:
-    "bright vibrant colors, high saturation, energetic and colorful appearance",
+    vibrant:
+        "bright vibrant colors, high saturation, energetic and colorful appearance",
 
-  sunset:
-    "warm orange, pink and purple hues, soft golden light",
+    sunset:
+        "warm orange, pink and purple hues, soft golden light",
 
-  forest:
-    "deep green, earthy tones, natural and refreshing atmosphere",
+    forest:
+        "deep green, earthy tones, natural and refreshing atmosphere",
 
-  neon:
-    "bright neon colors, glowing accents, cyberpunk aesthetic",
+    neon:
+        "bright neon colors, glowing accents, cyberpunk aesthetic",
 
-  purple:
-    "deep purple, violet and magenta tones, premium modern appearance",
+    purple:
+        "deep purple, violet and magenta tones, premium modern appearance",
 
-  monochrome:
-    "black and white color scheme, high contrast, clean and dramatic look",
+    monochrome:
+        "black and white color scheme, high contrast, clean and dramatic look",
 
-  ocean:
-    "deep blue, teal and turquoise tones, cool and refreshing atmosphere",
+    ocean:
+        "deep blue, teal and turquoise tones, cool and refreshing atmosphere",
 
-  pastel:
-    "soft pastel colors, low saturation, gentle and elegant appearance",
+    pastel:
+        "soft pastel colors, low saturation, gentle and elegant appearance",
 };
 
-
-// ============================================
-// GENERATE THUMBNAIL
-// ============================================
-
 export const generateThumbnail = async (
-  req: Request,
-  res: Response
+    req: Request,
+    res: Response
 ) => {
+    try {
+        const { userId } = req.session;
 
-  let filePath: string | null = null;
+        if (!userId) {
+            return res.status(401).json({
+                message:
+                    "Unauthorized. Please login first.",
+            });
+        }
 
-  try {
+        const {
+            title,
+            prompt: user_prompt,
+            style,
+            aspect_ratio,
+            color_scheme,
+            text_overlay,
+            text_overlay_text,
+        } = req.body;
 
-    // ========================================
-    // GET LOGGED-IN USER
-    // ========================================
+        if (!title || !title.trim()) {
+            return res.status(400).json({
+                message: "Title is required",
+            });
+        }
 
-    const { userId } = req.session;
+        const thumbnail =
+            await Thumbnail.create({
+                userId,
+                title,
+                prompt_used: user_prompt,
+                user_prompt,
+                style,
+                aspect_ratio,
+                color_scheme,
+                text_overlay,
+                text_overlay_text,
+                isGenerating: true,
+            });
 
-    if (!userId) {
-      return res.status(401).json({
-        message:
-          "Unauthorized. Please login first.",
-      });
-    }
+        const selectedStyle =
+            stylePrompts[
+                style as keyof typeof stylePrompts
+            ] ||
+            stylePrompts["Bold & Graphic"];
 
-
-    // ========================================
-    // GET REQUEST BODY
-    // ========================================
-
-    const {
-      title,
-      prompt: user_prompt,
-      style,
-      aspect_ratio,
-      color_scheme,
-      text_overlay,
-      text_overlay_text,
-    } = req.body;
-
-
-    // ========================================
-    // VALIDATE TITLE
-    // ========================================
-
-    if (!title || !title.trim()) {
-      return res.status(400).json({
-        message: "Title is required",
-      });
-    }
-
-
-    // ========================================
-    // CREATE THUMBNAIL RECORD
-    // ========================================
-
-    const thumbnail =
-      await Thumbnail.create({
-
-        userId,
-
-        title,
-
-        prompt_used:
-          user_prompt,
-
-        user_prompt,
-
-        style,
-
-        aspect_ratio,
-
-        color_scheme,
-
-        text_overlay,
-
-        text_overlay_text,
-
-        isGenerating: true,
-
-      });
-
-
-    // ========================================
-    // SELECT STYLE
-    // ========================================
-
-    const selectedStyle =
-      stylePrompts[
-        style as keyof typeof stylePrompts
-      ] ||
-      stylePrompts["Bold & Graphic"];
-
-
-    // ========================================
-    // BUILD AI PROMPT
-    // ========================================
-
-    let prompt = `
+        let prompt = `
 Create a professional, highly engaging YouTube thumbnail.
 
 Main topic:
@@ -227,59 +141,37 @@ Make the subject immediately understandable.
 Avoid unnecessary clutter.
 `;
 
+        if (color_scheme) {
+            const selectedColor =
+                colorSchemeDescriptions[
+                    color_scheme as keyof typeof colorSchemeDescriptions
+                ];
 
-    // ========================================
-    // COLOR SCHEME
-    // ========================================
-
-    if (color_scheme) {
-
-      const selectedColor =
-        colorSchemeDescriptions[
-          color_scheme as keyof typeof colorSchemeDescriptions
-        ];
-
-      if (selectedColor) {
-
-        prompt += `
+            if (selectedColor) {
+                prompt += `
 
 Color scheme:
 ${selectedColor}
 `;
+            }
+        }
 
-      }
-
-    }
-
-
-    // ========================================
-    // USER CUSTOM PROMPT
-    // ========================================
-
-    if (
-      user_prompt &&
-      user_prompt.trim()
-    ) {
-
-      prompt += `
+        if (
+            user_prompt &&
+            user_prompt.trim()
+        ) {
+            prompt += `
 
 Additional requirements:
 ${user_prompt}
 `;
+        }
 
-    }
-
-
-    // ========================================
-    // TEXT OVERLAY
-    // ========================================
-
-    if (
-      text_overlay &&
-      text_overlay_text
-    ) {
-
-      prompt += `
+        if (
+            text_overlay &&
+            text_overlay_text
+        ) {
+            prompt += `
 
 TEXT REQUIREMENT:
 
@@ -303,15 +195,9 @@ IMPORTANT:
 - Make the text visually attractive.
 - Keep the text highly visible.
 `;
+        }
 
-    }
-
-
-    // ========================================
-    // FINAL PROMPT
-    // ========================================
-
-    prompt += `
+        prompt += `
 
 Final requirements:
 
@@ -329,530 +215,238 @@ Aspect ratio:
 ${aspect_ratio || "16:9"}
 `;
 
+        console.log(
+            "Generating thumbnail with Pollinations AI..."
+        );
 
-    console.log(
-      "========================================"
-    );
+        let width = 1280;
+        let height = 720;
 
-    console.log(
-      "Generating thumbnail with Pollinations AI..."
-    );
-
-    console.log(
-      "Model: flux"
-    );
-
-    console.log(
-      "Prompt:",
-      prompt
-    );
-
-    console.log(
-      "========================================"
-    );
-
-
-    // ========================================
-    // IMAGE DIMENSIONS
-    // ========================================
-
-    let width = 1280;
-    let height = 720;
-
-    if (aspect_ratio === "1:1") {
-
-      width = 1024;
-      height = 1024;
-
-    } else if (aspect_ratio === "4:5") {
-
-      width = 1024;
-      height = 1280;
-
-    } else if (aspect_ratio === "9:16") {
-
-      width = 720;
-      height = 1280;
-
-    } else if (aspect_ratio === "4:3") {
-
-      width = 1024;
-      height = 768;
-
-    } else {
-
-      width = 1280;
-      height = 720;
-
-    }
-
-
-    // ========================================
-    // ENCODE PROMPT
-    // ========================================
-
-    const encodedPrompt =
-      encodeURIComponent(prompt);
-
-
-    // ========================================
-    // POLLINATIONS IMAGE URL
-    // ========================================
-
-    const generatedImageUrl =
-      `https://gen.pollinations.ai/image/${encodedPrompt}` +
-      `?model=flux` +
-      `&width=${width}` +
-      `&height=${height}` +
-      `&nologo=true`;
-
-
-    console.log(
-      "Pollinations URL created"
-    );
-
-    console.log(
-      "Waiting for Pollinations image..."
-    );
-
-
-    // ========================================
-    // DOWNLOAD IMAGE FROM POLLINATIONS
-    // ========================================
-
-    const imageResponse =
-      await axios.get(
-        generatedImageUrl,
-        {
-
-          headers: {
-            Authorization:
-              `Bearer ${pollinationsApiKey}`,
-          },
-
-          responseType:
-            "arraybuffer",
-
-          timeout:
-            300000,
-
-          maxContentLength:
-            Infinity,
-
-          maxBodyLength:
-            Infinity,
-
+        if (aspect_ratio === "1:1") {
+            width = 1024;
+            height = 1024;
+        } else if (aspect_ratio === "4:5") {
+            width = 1024;
+            height = 1280;
+        } else if (aspect_ratio === "9:16") {
+            width = 720;
+            height = 1280;
+        } else if (aspect_ratio === "4:3") {
+            width = 1024;
+            height = 768;
         }
-      );
 
+        const encodedPrompt =
+            encodeURIComponent(prompt);
 
-    // ========================================
-    // CONVERT TO BUFFER
-    // ========================================
+        const generatedImageUrl =
+            `https://gen.pollinations.ai/image/${encodedPrompt}` +
+            `?model=flux` +
+            `&width=${width}` +
+            `&height=${height}` +
+            `&nologo=true`;
 
-    const finalBuffer =
-      Buffer.from(
-        imageResponse.data
-      );
+        console.log(
+            "Waiting for Pollinations image..."
+        );
 
+        const imageResponse =
+            await axios.get(
+                generatedImageUrl,
+                {
+                    headers: {
+                        Authorization:
+                            `Bearer ${pollinationsApiKey}`,
+                    },
+                    responseType:
+                        "arraybuffer",
+                    timeout: 300000,
+                    maxContentLength:
+                        Infinity,
+                    maxBodyLength:
+                        Infinity,
+                }
+            );
 
-    if (
-      !finalBuffer ||
-      finalBuffer.length === 0
-    ) {
+        const finalBuffer =
+            Buffer.from(
+                imageResponse.data
+            );
 
-      throw new Error(
-        "Pollinations returned an empty image"
-      );
-
-    }
-
-
-    console.log(
-      "Image generated successfully by Pollinations"
-    );
-
-    console.log(
-      "Image size:",
-      finalBuffer.length,
-      "bytes"
-    );
-
-
-    // ========================================
-    // SAVE IMAGE TEMPORARILY
-    // ========================================
-
-    fs.mkdirSync(
-      "images",
-      {
-        recursive: true,
-      }
-    );
-
-
-    filePath =
-      `images/thumbnail-${Date.now()}.png`;
-
-
-    fs.writeFileSync(
-      filePath,
-      finalBuffer
-    );
-
-
-    console.log(
-      "Temporary image saved:",
-      filePath
-    );
-
-
-    // ========================================
-    // UPLOAD TO CLOUDINARY
-    // ========================================
-
-    console.log(
-      "========================================"
-    );
-
-    console.log(
-      "Uploading image to Cloudinary..."
-    );
-
-    console.log(
-      "File path:",
-      filePath
-    );
-
-
-    const uploadResult =
-      await cloudinary.uploader.upload(
-        filePath,
-        {
-          resource_type: "image",
-          timeout: 120000,
+        if (
+            !finalBuffer ||
+            finalBuffer.length === 0
+        ) {
+            throw new Error(
+                "Pollinations returned an empty image"
+            );
         }
-      );
 
-
-    console.log(
-      "Cloudinary upload successful"
-    );
-
-    console.log(
-      "Cloudinary URL:",
-      uploadResult.secure_url
-    );
-
-    console.log(
-      "========================================"
-    );
-
-
-    // ========================================
-    // UPDATE MONGODB
-    // ========================================
-
-    thumbnail.image_url =
-      uploadResult.secure_url;
-
-    thumbnail.isGenerating =
-      false;
-
-    await thumbnail.save();
-
-
-    // ========================================
-    // RESPONSE
-    // ========================================
-
-    return res.status(200).json({
-
-      message:
-        "Thumbnail Generated",
-
-      thumbnail,
-
-    });
-
-
-  } catch (error: any) {
-
-    // ========================================
-    // DETAILED ERROR LOG
-    // ========================================
-
-    console.error(
-      "========================================"
-    );
-
-    console.error(
-      "THUMBNAIL GENERATION ERROR"
-    );
-
-    console.error(
-      "FULL ERROR:",
-      error
-    );
-
-    console.error(
-      "ERROR NAME:",
-      error?.name
-    );
-
-    console.error(
-      "ERROR MESSAGE:",
-      error?.message
-    );
-
-    console.error(
-      "ERROR CODE:",
-      error?.code
-    );
-
-    console.error(
-      "ERROR HTTP CODE:",
-      error?.http_code
-    );
-
-    console.error(
-      "ERROR STATUS:",
-      error?.response?.status
-    );
-
-    console.error(
-      "ERROR RESPONSE:",
-      error?.response?.data
-    );
-
-    console.error(
-      "ERROR STACK:",
-      error?.stack
-    );
-
-    console.error(
-      "========================================"
-    );
-
-
-    // ========================================
-    // DELETE TEMPORARY FILE
-    // ========================================
-
-    if (
-      filePath &&
-      fs.existsSync(filePath)
-    ) {
-
-      try {
-
-        fs.unlinkSync(
-          filePath
+        console.log(
+            "Image generated successfully by Pollinations"
         );
 
         console.log(
-          "Temporary file deleted"
+            "Image size:",
+            finalBuffer.length,
+            "bytes"
         );
 
-      } catch (cleanupError) {
-
-        console.error(
-          "Temporary file cleanup failed:",
-          cleanupError
+        console.log(
+            "Uploading image to Cloudinary..."
         );
 
-      }
+        const uploadResult =
+            await new Promise<any>(
+                (resolve, reject) => {
+                    const uploadStream =
+                        cloudinary.uploader.upload_stream(
+                            {
+                                resource_type:
+                                    "image",
+                                timeout:
+                                    120000,
+                            },
+                            (
+                                error,
+                                result
+                            ) => {
+                                if (error) {
+                                    reject(
+                                        error
+                                    );
+                                } else {
+                                    resolve(
+                                        result
+                                    );
+                                }
+                            }
+                        );
 
-    }
-
-
-    // ========================================
-    // ERROR MESSAGE
-    // ========================================
-
-    let message =
-      error?.message ||
-      "Failed to generate thumbnail";
-
-
-    if (
-      error?.code ===
-      "ECONNABORTED"
-    ) {
-
-      message =
-        "Pollinations request timed out. Please try again.";
-
-    }
-
-
-    if (
-      error?.code ===
-      "ETIMEDOUT"
-    ) {
-
-      message =
-        "Connection to Pollinations timed out. Please try again.";
-
-    }
-
-
-    if (
-      error?.response?.data
-    ) {
-
-      try {
-
-        if (
-          typeof error.response.data ===
-          "string"
-        ) {
-
-          message =
-            error.response.data;
-
-        } else {
-
-          message =
-            error.response.data?.error?.message ||
-            error.response.data?.message ||
-            error.response.data?.error ||
-            JSON.stringify(
-              error.response.data
+                    uploadStream.end(
+                        finalBuffer
+                    );
+                }
             );
 
+        console.log(
+            "Cloudinary upload successful"
+        );
+
+        console.log(
+            "Cloudinary URL:",
+            uploadResult.secure_url
+        );
+
+        thumbnail.image_url =
+            uploadResult.secure_url;
+
+        thumbnail.isGenerating =
+            false;
+
+        await thumbnail.save();
+
+        return res.status(200).json({
+            message:
+                "Thumbnail Generated",
+            thumbnail,
+        });
+
+    } catch (error: any) {
+        console.error(
+            "THUMBNAIL GENERATION ERROR:",
+            error
+        );
+
+        let message =
+            error?.message ||
+            "Failed to generate thumbnail";
+
+        if (
+            error?.code ===
+            "ECONNABORTED"
+        ) {
+            message =
+                "Pollinations request timed out. Please try again.";
         }
 
-      } catch {
+        if (
+            error?.code ===
+            "ETIMEDOUT"
+        ) {
+            message =
+                "Connection to Pollinations timed out. Please try again.";
+        }
 
-        message =
-          "Pollinations AI request failed";
+        if (error?.response?.data) {
+            try {
+                if (
+                    typeof error.response
+                        .data === "string"
+                ) {
+                    message =
+                        error.response.data;
+                } else {
+                    message =
+                        error.response.data
+                            ?.error?.message ||
+                        error.response.data
+                            ?.message ||
+                        error.response.data
+                            ?.error ||
+                        JSON.stringify(
+                            error.response.data
+                        );
+                }
+            } catch {
+                message =
+                    "Pollinations AI request failed";
+            }
+        }
 
-      }
-
+        return res.status(
+            error?.response?.status ||
+            error?.http_code ||
+            500
+        ).json({
+            message,
+        });
     }
-
-
-    // ========================================
-    // SEND ERROR
-    // ========================================
-
-    return res.status(
-      error?.response?.status ||
-      error?.http_code ||
-      500
-    ).json({
-
-      message,
-
-    });
-
-  } finally {
-
-    // ========================================
-    // FINAL CLEANUP
-    // ========================================
-
-    if (
-      filePath &&
-      fs.existsSync(filePath)
-    ) {
-
-      try {
-
-        fs.unlinkSync(
-          filePath
-        );
-
-      } catch (cleanupError) {
-
-        console.error(
-          "Failed to remove temporary image:",
-          cleanupError
-        );
-
-      }
-
-    }
-
-  }
-
 };
 
-
-// ============================================
-// DELETE THUMBNAIL
-// ============================================
-
 export const deleteThumbnail = async (
-  req: Request,
-  res: Response
+    req: Request,
+    res: Response
 ) => {
+    try {
+        const { id } = req.params;
+        const { userId } = req.session;
 
-  try {
+        if (!userId) {
+            return res.status(401).json({
+                message:
+                    "Unauthorized. Please login first.",
+            });
+        }
 
-    const { id } =
-      req.params;
+        await Thumbnail.findOneAndDelete({
+            _id: id,
+            userId,
+        });
 
-    const { userId } =
-      req.session;
+        return res.json({
+            message:
+                "Thumbnail deleted successfully",
+        });
 
+    } catch (error: any) {
+        console.error(
+            "DELETE THUMBNAIL ERROR:",
+            error
+        );
 
-    // ========================================
-    // AUTH CHECK
-    // ========================================
-
-    if (!userId) {
-
-      return res.status(401).json({
-
-        message:
-          "Unauthorized. Please login first.",
-
-      });
-
+        return res.status(500).json({
+            message: error.message,
+        });
     }
-
-
-    // ========================================
-    // DELETE THUMBNAIL
-    // ========================================
-
-    await Thumbnail.findOneAndDelete({
-
-      _id: id,
-
-      userId,
-
-    });
-
-
-    // ========================================
-    // RESPONSE
-    // ========================================
-
-    return res.json({
-
-      message:
-        "Thumbnail deleted successfully",
-
-    });
-
-  } catch (error: any) {
-
-    console.error(
-      "DELETE THUMBNAIL ERROR:",
-      error
-    );
-
-
-    return res.status(500).json({
-
-      message:
-        error.message,
-
-    });
-
-  }
-
 };
